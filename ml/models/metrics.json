@@ -1,0 +1,62 @@
+{
+  "model_type": "RandomForestClassifier",
+  "classes": [
+    "API_ERROR",
+    "NORMAL",
+    "ORDER_REJECTION"
+  ],
+  "feature_count": 25,
+  "precision_macro": 0.9950433705080545,
+  "recall_macro": 0.9555555555555556,
+  "f1_macro": 0.9736935972891029,
+  "classification_report": {
+    "API_ERROR": {
+      "precision": 0.9851301115241635,
+      "recall": 1.0,
+      "f1-score": 0.9925093632958801,
+      "support": 265.0
+    },
+    "NORMAL": {
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1-score": 1.0,
+      "support": 705.0
+    },
+    "ORDER_REJECTION": {
+      "precision": 1.0,
+      "recall": 0.8666666666666667,
+      "f1-score": 0.9285714285714286,
+      "support": 30.0
+    },
+    "accuracy": 0.996,
+    "macro avg": {
+      "precision": 0.9950433705080545,
+      "recall": 0.9555555555555556,
+      "f1-score": 0.9736935972891029,
+      "support": 1000.0
+    },
+    "weighted avg": {
+      "precision": 0.9960594795539033,
+      "recall": 0.996,
+      "f1-score": 0.9958721241305512,
+      "support": 1000.0
+    }
+  },
+  "confusion_matrix": [
+    [
+      265,
+      0,
+      0
+    ],
+    [
+      0,
+      705,
+      0
+    ],
+    [
+      4,
+      0,
+      26
+    ]
+  ]
+}
