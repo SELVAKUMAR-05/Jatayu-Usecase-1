@@ -1,0 +1,5 @@
+request_id,order_id,source,destination,status_code,response_ms,category
+REQ-DEMO-001,ORD-DEMO-001,Order Management,Inventory,200,120,NORMAL
+REQ-DEMO-002,ORD-DEMO-002,Order Management,Provisioning,504,34000,API_ERROR
+REQ-DEMO-003,ORD-DEMO-003,Order Management,Logistics,200,42000,ORDER_DELAY
+REQ-DEMO-004,ORD-DEMO-004,Order Management,Inventory,422,210,ORDER_REJECTION

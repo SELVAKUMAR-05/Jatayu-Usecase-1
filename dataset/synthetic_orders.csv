@@ -1,0 +1,5 @@
+order_id,customer_id,order_type,status,stage,priority,value
+ORD-DEMO-001,CUS-10001,New subscription,Completed,Completed,Standard,129.99
+ORD-DEMO-002,CUS-10002,Device upgrade,Failed,Provisioning,High,449.99
+ORD-DEMO-003,CUS-10003,Service add-on,Delayed,Logistics,Standard,79.99
+ORD-DEMO-004,CUS-10004,New subscription,Rejected,Inventory,Critical,219.99
