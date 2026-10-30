@@ -1,0 +1,1330 @@
+frontend
+npm install
+npm run dev  # http://localhost:5173 (proxies /api to :8000)
+Backend
+python -m venv .venv
+.venv\Scripts\activate  # Windows
+pip install -r requirements.txt
+# uses SQLite by default (see .env.example)
+uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
+
+
+# MASTER DEVELOPMENT PROMPT
+# OrderFlow Sentinel – Enterprise AI-Powered Self-Healing Order & API Failure Resolution Platform
+
+## ROLE
+
+Act as a complete enterprise software engineering team consisting of:
+
+- Principal Software Architect
+- Senior Full-Stack Developer
+- AI/ML Engineer
+- Distributed Systems Engineer
+- DevOps Engineer
+- Cybersecurity Engineer
+- Enterprise UI/UX Designer
+- QA and Automation Engineer
+
+Your responsibility is to transform my existing OrderFlow Sentinel application into a production-oriented, enterprise-grade, AI-powered self-healing platform.
+
+The application is developed for JATAYU Season 6, based on the company-provided use case.
+
+**Do not create just a dashboard or a college-level prototype. Build a functional enterprise-style application that demonstrates real failure detection, intelligent root-cause analysis, automated recovery, and measurable business outcomes.**
+
+---
+
+# 1. PROJECT DEFINITION
+
+Project Name: OrderFlow Sentinel
+
+Project Title: Self-Healing AI for Order & API Failure Resolution.
+
+Industry Focus:
+- Telecom broadband and device order fulfilment.
+- Retail omnichannel order management.
+
+The architecture must also be adaptable to:
+- Banking.
+- Insurance.
+- Logistics.
+- E-commerce.
+- Other industries involving multi-system order processing.
+
+## Core Problem
+
+Modern enterprises process orders through multiple interconnected systems:
+
+1. CRM / E-commerce
+2. Order Management System (OMS)
+3. Inventory Management
+4. Payment Gateway
+5. Provisioning / Activation
+6. Logistics
+7. Notification Service
+
+These systems communicate through APIs.
+
+When one service fails, an order can become stuck, delayed, rejected, or lost.
+
+Operations teams traditionally identify and resolve these failures manually.
+
+## Our Solution
+
+OrderFlow Sentinel continuously monitors API communications and order-processing events, detects failures in real time, uses AI/ML to identify probable root causes, predicts potential delays, and executes safe recovery actions automatically.
+
+The system must support three primary failure categories:
+
+1. API Response Errors.
+2. Order Delays.
+3. Order Rejections.
+
+---
+
+# 2. MOST IMPORTANT DEVELOPMENT INSTRUCTION
+
+I ALREADY HAVE AN EXISTING APPLICATION.
+
+Before writing code:
+
+1. Inspect the entire existing repository.
+2. Understand the frontend and backend architecture.
+3. Examine every existing module.
+4. Inspect database schemas and relationships.
+5. Identify implemented features.
+6. Identify incomplete features.
+7. Identify broken or non-functional features.
+8. Identify rule-based features incorrectly presented as AI.
+9. Identify missing enterprise capabilities.
+10. Prepare an implementation plan.
+
+Do not delete the existing application and rebuild everything.
+
+Do not unnecessarily replace working components.
+
+Preserve existing functionality, API contracts, database records, UI design, and useful code.
+
+Modify the existing architecture incrementally.
+
+Do not stop after generating a development plan. Continue implementing the application.
+
+---
+
+# 3. TECHNOLOGY STACK
+
+Use the following technology stack, retaining existing compatible dependencies wherever practical.
+
+## Frontend
+- React.js
+- Vite
+- TypeScript
+- Tailwind CSS
+- Shadcn/UI
+- Lucide React
+- Recharts
+- Framer Motion
+- Axios
+
+## Backend
+- Python 3.12+
+- FastAPI
+- SQLAlchemy
+- Pydantic
+- REST APIs
+- WebSockets
+
+## Database
+- PostgreSQL
+- Redis
+
+## AI / ML
+- Scikit-learn
+- XGBoost
+- Sentence Transformers
+- Isolation Forest
+- Time-series analysis
+- OpenAI API for optional LLM-based root-cause analysis
+
+## Event Streaming
+- Apache Kafka
+
+## Observability
+- OpenTelemetry
+- Prometheus
+- Grafana
+- Structured logging
+
+## Deployment
+- Docker
+- Docker Compose
+- Environment variables
+- Alembic database migrations
+
+Important:
+- All essential features must work locally without paid services.
+- LLM integration must be optional.
+- Provide deterministic fallback mechanisms.
+- Never display fake AI predictions.
+- Clearly distinguish rule-based detection, ML predictions, and LLM-generated explanations.
+
+---
+
+# 4. ENTERPRISE APPLICATION ARCHITECTURE
+
+Implement a modular microservices-oriented architecture.
+
+The application must contain the following logical components:
+
+1. Order Service
+2. Inventory Service
+3. Payment Service
+4. Provisioning Service
+5. Logistics Service
+6. Notification Service
+7. Telemetry Ingestion Service
+8. Failure Detection Engine
+9. AI Root Cause Analysis Engine
+10. Resolution Engine
+11. Human Approval Service
+12. Feedback and Learning Service
+13. Analytics Service
+
+Use independent services with separate responsibilities and clear API boundaries.
+
+For local development, services can run as separate Docker containers.
+
+Use an event-driven architecture with Kafka for inter-service communication.
+
+Implement REST adapters so the simulated services can eventually be replaced with actual enterprise APIs.
+
+---
+
+# 5. REAL-TIME TELEMETRY AND DISTRIBUTED TRACING
+
+This is a critical requirement.
+
+Implement a central telemetry ingestion system.
+
+Collect:
+
+- API request logs.
+- API response logs.
+- Order lifecycle events.
+- Service health information.
+- Distributed traces.
+- Processing duration.
+- SLA timers.
+- Retry attempts.
+- Queue backlogs.
+- Callback failures.
+
+Every order must have:
+
+- Order ID.
+- Correlation ID.
+- Trace ID.
+- Current processing stage.
+- Event timestamps.
+
+Every event must be associated with its corresponding order and service.
+
+Implement distributed tracing using OpenTelemetry.
+
+The system must reconstruct the complete request journey across multiple services.
+
+Example:
+
+CRM → OMS → Inventory → Payment → Provisioning → Logistics → Notification.
+
+If Provisioning fails, Sentinel must identify:
+- The failed service.
+- The upstream service.
+- The downstream dependency.
+- The affected order.
+- Related API calls.
+- The probable source of failure.
+
+Implement event deduplication, timestamp normalization, and handling for out-of-order events.
+
+---
+
+# 6. ADVANCED AI/ML FAILURE DETECTION
+
+Replace the existing rule-only detection approach with a hybrid detection architecture.
+
+Do not remove deterministic rules. Combine rules and actual ML models.
+
+## A. ML Failure Classification
+
+Train an actual Scikit-learn model.
+
+Input features should include:
+
+- HTTP status code.
+- Response time.
+- Service name.
+- Endpoint.
+- Retry count.
+- Order stage.
+- Error category.
+- Previous failure history.
+- Queue depth.
+- Number of recent failures.
+- SLA utilization.
+
+Predict:
+
+- NORMAL
+- API_ERROR
+- ORDER_DELAY
+- ORDER_REJECTION
+
+Also implement a fixable-versus-hard rejection classifier where sufficient labelled data is available.
+
+Requirements:
+
+- Generate synthetic training data.
+- Create a reproducible training script.
+- Save trained model artifacts.
+- Implement model versioning.
+- Display prediction probabilities.
+- Evaluate precision, recall, F1-score and confusion matrix.
+- Support model retraining.
+- Handle unknown and low-confidence events safely.
+
+Do not use the same simple rules as both the training labels and the only evaluation evidence without explaining this limitation.
+
+## B. Anomaly Detection
+
+Implement Isolation Forest or another appropriate anomaly detection model.
+
+Detect:
+
+- Unusual API response times.
+- Sudden increases in error rates.
+- Abnormal service traffic.
+- Queue backlog anomalies.
+- Unexpected service behaviour.
+- Unusual order-processing patterns.
+
+Generate anomaly alerts with:
+- Anomaly score.
+- Affected service.
+- Detection time.
+- Supporting evidence.
+- Severity.
+
+## C. Intelligent Log Analysis
+
+Implement Sentence Transformers for semantic similarity where practical.
+
+The system should:
+
+- Convert logs into embeddings.
+- Group semantically similar errors.
+- Identify repeated failure patterns.
+- Correlate failures across different orders.
+- Identify recurring service-level incidents.
+
+If Sentence Transformers are unavailable, provide a TF-IDF fallback.
+
+Clearly indicate which method is being used.
+
+## D. Delay Prediction
+
+Build a delay prediction model.
+
+Use historical and current order-stage information.
+
+Features should include:
+- Processing duration.
+- Current stage.
+- Queue backlog.
+- Service latency.
+- Previous stage duration.
+- Historical service performance.
+- Current SLA utilization.
+
+Predict:
+- Probability of SLA breach.
+- Estimated remaining processing time.
+- Most likely bottleneck.
+- Recommended preventive action.
+
+Generate alerts BEFORE an SLA breach whenever the prediction is sufficiently reliable.
+
+Do not confuse threshold-based delay detection with predictive ML.
+
+---
+
+# 7. AI ROOT CAUSE ANALYSIS AGENT
+
+Implement a genuine root-cause analysis component.
+
+The agent must not simply repeat the HTTP error message.
+
+It must analyse:
+
+1. Distributed traces.
+2. API request and response logs.
+3. Order event history.
+4. Service dependency graph.
+5. Similar historical incidents.
+6. Service health metrics.
+7. ML predictions.
+8. Recent retry attempts.
+
+Determine the most probable root cause.
+
+Example:
+
+Incident:
+Order ORD-10045.
+
+Observed symptom:
+Provisioning Gateway returned HTTP 504.
+
+Evidence:
+- Provisioning API latency increased.
+- Downstream activation service latency increased.
+- Multiple activation requests timed out.
+- Queue backlog exceeded its normal baseline.
+- Inventory and payment services were healthy.
+
+Probable root cause:
+Downstream activation service overload.
+
+Recommended action:
+Retry with exponential backoff. If the service remains unhealthy, evaluate an approved fallback gateway.
+
+Display:
+
+- Root Cause.
+- Supporting Evidence.
+- Affected Service.
+- Related Services.
+- Confidence.
+- Business Impact.
+- Recommended Recovery.
+- Alternative Recovery.
+- Risk Level.
+
+LLM integration:
+
+Use an optional OpenAI API integration for generating explanations and recommendations.
+
+The LLM must receive structured evidence from the backend.
+
+It must not invent evidence, fabricate confidence values, or make unsupported claims.
+
+Validate every proposed action using deterministic policies.
+
+The LLM must NEVER directly execute arbitrary commands, database queries, or API requests.
+
+---
+
+# 8. ADVANCED SELF-HEALING RESOLUTION ENGINE
+
+This is the most important business feature.
+
+The system must not merely recommend solutions.
+
+It must actually execute safe recovery operations in the simulated environment.
+
+Implement a policy-driven resolution engine.
+
+## A. Transient API Failures
+
+For HTTP 500, 502, 503 and 504:
+
+- Retry with exponential backoff.
+- Add random jitter.
+- Configure maximum retry attempts.
+- Record every attempt.
+- Check service health before retrying.
+- Use fallback routing when configured.
+- Escalate after retry exhaustion.
+
+## B. Authentication Failures
+
+For HTTP 401:
+
+- Detect token expiration.
+- Refresh the authentication token through the configured credential provider.
+- Retry only after successful refresh.
+- Escalate persistent authentication failures.
+
+Never expose credentials in logs.
+
+## C. Rate Limiting
+
+For HTTP 429:
+
+- Read Retry-After.
+- Apply request throttling.
+- Schedule retry.
+- Respect service rate limits.
+- Avoid retry storms.
+
+## D. Address Validation Rejection
+
+- Identify invalid address fields.
+- Normalize supported address formats.
+- Validate corrected information.
+- Display before-and-after values.
+- Automatically resubmit only when the correction is deterministic and policy-approved.
+- Require approval for uncertain changes.
+
+Use synthetic data only.
+
+## E. Inventory Rejection
+
+- Check alternative warehouses.
+- Find available inventory.
+- Recommend the best alternative.
+- Check inventory reservation consistency.
+- Request approval where required.
+- Update the order after successful reservation.
+
+## F. Payment Rejection
+
+- Identify payment rejection categories.
+- Distinguish temporary failures from permanent declines.
+- Do not retry permanent declines.
+- Never store card numbers or sensitive payment credentials.
+- Avoid duplicate payment attempts.
+- Escalate cases requiring customer action.
+
+## G. Predicted Order Delay
+
+- Detect possible SLA breaches.
+- Identify the bottleneck.
+- Recommend alternative routes or resources.
+- Notify operators.
+- Prioritize critical orders.
+
+---
+
+# 9. ENTERPRISE RELIABILITY MECHANISMS
+
+Implement the following distributed-systems patterns.
+
+## Idempotency
+
+Prevent duplicate order creation, payment processing, inventory reservation, and API retries.
+
+Use idempotency keys and persistent execution records.
+
+## Circuit Breaker
+
+Implement:
+
+- Closed state.
+- Open state.
+- Half-open state.
+
+Stop repeatedly calling unhealthy services.
+
+Automatically test service recovery under controlled conditions.
+
+## Dead-Letter Queue
+
+Store events that cannot be processed successfully.
+
+Provide:
+- Failure reason.
+- Original event.
+- Retry history.
+- Manual replay.
+- Replay status.
+
+## Saga Pattern
+
+Implement a transaction workflow for multi-service orders.
+
+If a later operation fails after earlier operations have completed, execute appropriate compensating actions or reconciliation.
+
+Never assume that distributed transactions are automatically atomic.
+
+## Retry Management
+
+Prevent:
+- Infinite retries.
+- Duplicate requests.
+- Retry storms.
+- Repeated execution of completed recovery actions.
+
+## Event Replay
+
+Allow authorised operators to replay failed events safely.
+
+---
+
+# 10. HUMAN-IN-THE-LOOP AND GOVERNANCE
+
+Create a complete operator approval workflow.
+
+Classify recovery actions into risk categories.
+
+LOW RISK:
+- Retrying transient requests.
+- Refreshing expired tokens.
+- Applying configured throttling.
+
+MEDIUM RISK:
+- Switching to a fallback gateway.
+- Normalizing an address.
+- Changing a processing route.
+
+HIGH RISK:
+- Payment-related operations.
+- Inventory reassignment.
+- Irreversible business operations.
+- Manual state changes.
+
+The policy engine must determine whether an action can be automatic or requires approval.
+
+The operator interface must provide:
+
+- Incident information.
+- Root cause.
+- Evidence.
+- Recommended action.
+- Risk level.
+- Expected outcome.
+- Approve.
+- Reject.
+- Escalate.
+
+Record every approval and rejection.
+
+Implement role-based access control:
+
+- Administrator.
+- Operations Manager.
+- Operations Engineer.
+- Read-only Auditor.
+
+---
+
+# 11. FEEDBACK AND CONTINUOUS LEARNING
+
+Implement a feedback mechanism.
+
+For every resolution, store:
+
+- Original incident.
+- Root cause prediction.
+- Model prediction.
+- Recommended action.
+- Actual executed action.
+- Recovery success or failure.
+- Recovery time.
+- Operator feedback.
+
+Build a retraining pipeline.
+
+Requirements:
+
+- Store labelled historical outcomes.
+- Validate training data.
+- Detect data drift.
+- Compare new models with existing models.
+- Keep model versions.
+- Allow rollback.
+- Prevent unvalidated models from automatically replacing production models.
+
+Do not claim the model learns automatically unless a genuine learning or retraining mechanism exists.
+
+---
+
+# 12. COMPLETE ENTERPRISE DASHBOARD
+
+Preserve the existing dashboard design where practical, but upgrade it into a professional enterprise monitoring interface.
+
+Use a modern dark enterprise theme.
+
+## Sidebar Navigation
+
+1. Executive Overview
+2. Live Order Monitoring
+3. API & Service Monitoring
+4. Failure Detection
+5. Predictive Intelligence
+6. Root Cause Analysis
+7. Self-Healing Center
+8. Operator Approval Center
+9. Service Dependency Map
+10. Analytics & Reports
+11. Model Performance
+12. Feedback & Learning
+13. Audit & Compliance
+14. Settings
+
+## Executive Overview
+
+Display:
+
+- Total Orders.
+- Completed Orders.
+- Failed Orders.
+- Delayed Orders.
+- Rejected Orders.
+- API Error Rate.
+- Active Incidents.
+- Automatically Recovered Orders.
+- Pending Approvals.
+- SLA Compliance.
+- Average MTTD.
+- Average MTTR.
+
+## Live Monitoring
+
+Display:
+- Live event stream.
+- API response time.
+- HTTP status codes.
+- Service health.
+- Queue depth.
+- Active failures.
+- Processing throughput.
+
+## Predictive Intelligence
+
+Display:
+- Predicted SLA breaches.
+- Anomaly alerts.
+- ML classifications.
+- Model confidence.
+- Historical failure patterns.
+
+## Root Cause Analysis
+
+Display:
+- Failure timeline.
+- Distributed trace.
+- Probable root cause.
+- Supporting evidence.
+- Affected dependencies.
+- Recommended recovery.
+
+## Self-Healing Center
+
+Display:
+- Recovery actions.
+- Retry history.
+- Fallback routing.
+- Successful recoveries.
+- Failed recoveries.
+- Pending approvals.
+
+## Service Dependency Map
+
+Build an interactive visual representation of the microservices.
+
+Show:
+- Service-to-service communication.
+- API connections.
+- Current health.
+- Latency.
+- Failure propagation.
+- Affected order journeys.
+
+## Model Performance
+
+Display:
+- Classification accuracy.
+- Precision.
+- Recall.
+- F1-score.
+- Confusion matrix.
+- Anomaly detection statistics.
+- Model version.
+- Last training time.
+- Dataset size.
+
+Use actual evaluation results.
+
+Never fabricate accuracy percentages.
+
+---
+
+# 13. MULTI-INDUSTRY SIMULATION
+
+Create two fully working demonstration environments.
+
+## Environment A: Telecom Broadband
+
+Order workflow:
+
+CRM → OMS → Inventory → Payment → Provisioning → Installation Scheduling → Notification.
+
+Simulate:
+
+- Broadband activation timeout.
+- Provisioning gateway overload.
+- Router inventory shortage.
+- Address validation failure.
+- Authentication failure.
+- Installation scheduling delay.
+
+Demonstrate:
+
+HTTP 504 → Failure Detection → Root Cause Analysis → Retry → Fallback Gateway → Successful Activation.
+
+## Environment B: Retail Omnichannel
+
+Order workflow:
+
+E-commerce → OMS → Inventory → Payment → Warehouse → Logistics → Notification.
+
+Simulate:
+
+- Payment gateway timeout.
+- Duplicate order.
+- Inventory shortage.
+- Invalid delivery address.
+- Warehouse processing delay.
+- Logistics API failure.
+
+Demonstrate:
+
+Address Rejection → Address Normalization → Validation → Resubmission → Successful Order Processing.
+
+Users must be able to switch between the two environments.
+
+Use synthetic customers, addresses, payment references and order values.
+
+---
+
+# 14. REAL-TIME SIMULATION CONTROL
+
+Provide:
+
+- Start Simulation.
+- Pause Simulation.
+- Resume Simulation.
+- Stop Simulation.
+- Generate 10 Orders.
+- Generate 50 Orders.
+- Generate 100 Orders.
+- Inject API Failure.
+- Inject Delay.
+- Inject Order Rejection.
+- Select Failure Service.
+- Select Failure Type.
+- Configure SLA Threshold.
+- Configure Failure Frequency.
+
+Generate realistic order events.
+
+Use WebSockets for live dashboard updates.
+
+Simulation must be deterministic when given the same seed and configuration, so test scenarios are reproducible.
+
+---
+
+# 15. DATABASE AND DATA MANAGEMENT
+
+Design a normalized PostgreSQL database.
+
+Required entities:
+
+- users
+- roles
+- orders
+- order_stages
+- services
+- service_dependencies
+- api_requests
+- telemetry_events
+- distributed_traces
+- incidents
+- ml_predictions
+- root_cause_analyses
+- resolution_policies
+- resolution_recommendations
+- resolution_executions
+- approval_requests
+- retry_attempts
+- feedback_records
+- model_versions
+- audit_logs
+- simulation_configs
+- dead_letter_events
+
+Implement:
+- Proper relationships.
+- Foreign keys.
+- Indexing.
+- Pagination.
+- Database migrations.
+- Transaction management.
+- Data validation.
+- Retention policies for telemetry.
+
+Use UTC internally for timestamps and display the appropriate local timezone in the UI.
+
+---
+
+# 16. API AND EVENT ARCHITECTURE
+
+Maintain REST APIs for:
+
+- Authentication.
+- Orders.
+- Order timelines.
+- Telemetry.
+- API monitoring.
+- Failure detection.
+- ML predictions.
+- Root cause analysis.
+- Resolution execution.
+- Operator approvals.
+- Service health.
+- Simulation.
+- Analytics.
+- Audit logs.
+- Model management.
+
+Use Kafka topics such as:
+
+- order.created
+- order.updated
+- order.stage.completed
+- api.request
+- api.failure
+- order.delayed
+- order.rejected
+- incident.detected
+- incident.analyzed
+- resolution.requested
+- resolution.completed
+- resolution.failed
+- operator.approval
+- feedback.recorded
+
+Implement:
+- Event schemas.
+- Schema validation.
+- Event versioning.
+- Consumer groups.
+- Retry handling.
+- Dead-letter handling.
+- Idempotent event processing.
+
+---
+
+# 17. SECURITY AND ENTERPRISE COMPLIANCE
+
+Implement:
+
+- JWT authentication.
+- Role-based access control.
+- Password hashing.
+- Secure secrets management.
+- Environment variable configuration.
+- HTTPS-ready deployment.
+- API authorization.
+- Request validation.
+- Rate limiting.
+- Sensitive-data redaction.
+- Audit logging.
+- Database backup procedures.
+
+Do not store real customer payment data.
+
+Use synthetic data throughout the demonstration.
+
+Ensure operators cannot execute actions outside their permissions.
+
+Make audit records append-only at the application level and design them to be tamper-evident.
+
+---
+
+# 18. OBSERVABILITY AND DEVOPS
+
+Implement monitoring for Sentinel itself.
+
+Use OpenTelemetry to collect traces, metrics and logs.
+
+Use Prometheus for:
+- API latency.
+- Request throughput.
+- Error rate.
+- Service health.
+- Queue processing.
+- Recovery execution time.
+
+Use Grafana dashboards for operational monitoring.
+
+Use Docker Compose to run the application.
+
+Include:
+- Health checks.
+- Restart policies.
+- Persistent database volumes.
+- Configuration management.
+- Logging.
+- Environment-specific configuration.
+
+Ensure that the monitoring system does not depend on the same service it is monitoring for all of its telemetry storage and alerting.
+
+---
+
+# 19. BUSINESS INTELLIGENCE AND SUCCESS METRICS
+
+The company expects measurable outcomes.
+
+Calculate:
+
+1. Mean Time to Detect (MTTD).
+2. Mean Time to Resolve (MTTR).
+3. Failure Detection Precision.
+4. Failure Detection Recall.
+5. False Auto-Action Rate.
+6. Auto-Recovery Rate.
+7. SLA Breach Rate.
+8. Order Completion Rate.
+9. Manual Intervention Rate.
+10. Recovered Order Value.
+
+Create before-and-after comparisons using controlled simulation experiments.
+
+All business metrics must be calculated from actual recorded simulation outcomes.
+
+Do not hardcode improved percentages.
+
+Allow CSV report exports.
+
+---
+
+# 20. TESTING AND VALIDATION
+
+Create a complete testing strategy.
+
+## Unit Tests
+
+Test:
+- ML classification.
+- Anomaly detection.
+- Delay prediction.
+- Root cause evidence extraction.
+- Retry policies.
+- Idempotency.
+- Circuit breaker.
+- Resolution policies.
+- Order state transitions.
+- Audit records.
+
+## Integration Tests
+
+Test complete workflows:
+
+Scenario 1:
+HTTP 504 → Detection → Root Cause → Retry → Success.
+
+Scenario 2:
+HTTP 504 → Detection → Retry Failure → Fallback Gateway → Success.
+
+Scenario 3:
+Address Rejection → Normalization → Validation → Resubmission.
+
+Scenario 4:
+Inventory Shortage → Alternative Warehouse → Approval → Reservation.
+
+Scenario 5:
+Payment Success → Provisioning Failure → Compensation or Reconciliation.
+
+Scenario 6:
+Predicted SLA Breach → Alert → Operator Intervention.
+
+## Reliability Tests
+
+Test:
+- Service unavailable.
+- Kafka unavailable.
+- Database interruption.
+- Duplicate events.
+- Delayed events.
+- Out-of-order events.
+- Retry exhaustion.
+- High request volume.
+- Recovery after restart.
+
+---
+
+# 21. USER EXPERIENCE REQUIREMENTS
+
+The application should look like an actual enterprise operations platform.
+
+Design standards:
+
+- Professional dark interface.
+- Consistent typography.
+- Responsive layout.
+- Minimal unnecessary animations.
+- Clear visual hierarchy.
+- Interactive data tables.
+- Detailed incident pages.
+- Service dependency visualization.
+- Real-time status updates.
+- Search and advanced filters.
+- Loading states.
+- Empty states.
+- Error states.
+- Confirmation dialogs for sensitive actions.
+
+Avoid:
+- Fake statistics.
+- Decorative AI labels.
+- Non-functional buttons.
+- Repeated generic cards.
+- Unnecessary animations.
+- Hardcoded incident details.
+
+Every displayed metric must be connected to actual backend data.
+
+---
+
+# 22. REQUIRED PROJECT STRUCTURE
+
+Maintain a clean modular architecture.
+
+orderflow-sentinel/
+│
+├── frontend/
+│   └── src/
+│       ├── components/
+│       ├── pages/
+│       ├── layouts/
+│       ├── services/
+│       ├── hooks/
+│       ├── types/
+│       └── utils/
+│
+├── backend/
+│   ├── app/
+│   │   ├── api/
+│   │   ├── core/
+│   │   ├── database/
+│   │   ├── models/
+│   │   ├── schemas/
+│   │   ├── services/
+│   │   ├── integrations/
+│   │   ├── telemetry/
+│   │   ├── tracing/
+│   │   ├── detection/
+│   │   ├── ml/
+│   │   ├── prediction/
+│   │   ├── root_cause/
+│   │   ├── resolution/
+│   │   ├── policies/
+│   │   ├── workflows/
+│   │   ├── simulation/
+│   │   ├── analytics/
+│   │   ├── monitoring/
+│   │   └── main.py
+│   │
+│   └── tests/
+│
+├── microservices/
+│   ├── order_service/
+│   ├── inventory_service/
+│   ├── payment_service/
+│   ├── provisioning_service/
+│   ├── logistics_service/
+│   └── notification_service/
+│
+├── ml/
+│   ├── datasets/
+│   ├── training/
+│   ├── evaluation/
+│   └── models/
+│
+├── infrastructure/
+│   ├── docker/
+│   ├── kafka/
+│   ├── prometheus/
+│   ├── grafana/
+│   └── otel/
+│
+├── docker-compose.yml
+├── .env.example
+└── README.md
+
+Adapt this structure to the existing repository instead of blindly duplicating directories.
+
+---
+
+# 23. DEVELOPMENT EXECUTION PLAN
+
+Follow this exact order.
+
+PHASE 1 – EXISTING PROJECT AUDIT
+- Inspect the repository.
+- Identify missing functionality.
+- Create a technical gap report.
+- Identify reusable components.
+- Prepare an incremental migration plan.
+
+PHASE 2 – CORE INFRASTRUCTURE
+- Database improvements.
+- Service architecture.
+- Telemetry ingestion.
+- Correlation IDs.
+- Distributed tracing.
+- Event streaming.
+
+PHASE 3 – AI/ML INTELLIGENCE
+- Synthetic dataset generation.
+- Model training.
+- Model evaluation.
+- Failure classification.
+- Anomaly detection.
+- Log similarity.
+- Delay prediction.
+- Root cause analysis.
+
+PHASE 4 – SELF-HEALING
+- Resolution policies.
+- Retry and backoff.
+- Fallback routing.
+- Address correction.
+- Inventory rerouting.
+- Idempotency.
+- Circuit breaker.
+- Dead-letter queue.
+- Saga compensation.
+
+PHASE 5 – OPERATOR PLATFORM
+- Incident management.
+- Approval workflows.
+- Service dependency map.
+- Analytics.
+- Audit logs.
+- Feedback learning.
+
+PHASE 6 – FRONTEND INTEGRATION
+- Connect all pages to backend APIs.
+- Add real-time updates.
+- Add service monitoring.
+- Add AI intelligence displays.
+- Add operational controls.
+
+PHASE 7 – TESTING AND DEPLOYMENT
+- Unit tests.
+- Integration tests.
+- Reliability tests.
+- Docker configuration.
+- README documentation.
+- Local deployment verification.
+
+Do not stop after any phase without implementing and validating its functionality.
+
+---
+
+# 24. ACCEPTANCE CRITERIA
+
+The application is considered complete only when the following demonstrations work.
+
+DEMO A – API FAILURE
+
+1. Generate a broadband order.
+2. Inject HTTP 504 into Provisioning.
+3. Detect the failure.
+4. Correlate related service events.
+5. Identify probable root cause.
+6. Execute bounded retries.
+7. Route to a healthy fallback gateway when permitted.
+8. Complete activation.
+9. Update the order timeline.
+10. Record the complete audit trail.
+
+DEMO B – ORDER REJECTION
+
+1. Generate a retail order.
+2. Inject an address validation rejection.
+3. Detect and classify the rejection.
+4. Analyse the address issue.
+5. Normalize the address using synthetic data.
+6. Validate the corrected address.
+7. Resubmit the order safely.
+8. Complete order processing.
+
+DEMO C – ORDER DELAY
+
+1. Generate multiple orders.
+2. Increase provisioning response time.
+3. Identify abnormal service behaviour.
+4. Predict possible SLA breaches.
+5. Generate proactive alerts.
+6. Identify the bottleneck.
+7. Recommend preventive action.
+8. Record the final outcome.
+
+DEMO D – FAILURE CASCADE
+
+1. Make a downstream service unavailable.
+2. Observe its effect on dependent services.
+3. Identify affected orders.
+4. Open the circuit breaker.
+5. Stop unnecessary requests.
+6. Queue recoverable work.
+7. Restore the service.
+8. Replay events safely.
+9. Resume affected orders without duplicates.
+
+---
+
+# 25. FINAL INSTRUCTIONS
+
+These requirements are mandatory:
+
+1. Do not rebuild the application from scratch.
+2. Do not remove existing working features.
+3. Do not generate fake AI functionality.
+4. Do not hardcode dashboard statistics.
+5. Do not claim ML accuracy without evaluation.
+6. Do not allow an LLM to directly execute recovery operations.
+7. Do not retry financial transactions blindly.
+8. Do not create duplicate orders or payments.
+9. Do not ignore security and auditability.
+10. Do not leave non-functional UI controls.
+11. Do not implement everything as one giant Python file.
+12. Do not stop at frontend development.
+13. Do not claim enterprise readiness without testing and evidence.
+
+If a component cannot be completed, document the limitation and provide a working fallback rather than pretending it is implemented.
+
+Maintain a DEVELOPMENT_STATUS.md file containing:
+
+- Implemented features.
+- Partially implemented features.
+- Pending features.
+- Test results.
+- Known limitations.
+- Next development tasks.
+
+Update this document after every development phase.
+
+## FINAL OBJECTIVE
+
+Transform OrderFlow Sentinel into a functional, enterprise-style AI-powered self-healing order management platform that demonstrates:
+
+- Real-time multi-service monitoring.
+- AI/ML-based failure detection.
+- Predictive order-delay identification.
+- Evidence-based root cause analysis.
+- Autonomous recovery of safe failures.
+- Human approval for risky operations.
+- Distributed tracing and event correlation.
+- Enterprise reliability mechanisms.
+- Feedback-driven improvement.
+- Measurable business outcomes.
+
+The final product must demonstrate that it can detect a problem, understand its cause, choose a safe action, execute recovery, and verify whether the order has successfully recovered.
+
+Build the complete solution using the existing codebase, incrementally and with production-oriented engineering practices.
+
+Start by auditing the existing repository and then proceed with implementation. Do not merely provide suggestions or a plan; make the actual code changes, run the tests, and verify the working application.
+do the above

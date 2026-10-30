@@ -1,0 +1,64 @@
+{
+  "model_type": "RandomForestClassifier+RandomForestRegressor",
+  "model_version": "delay-rf-2026.10.1",
+  "data_source": "deterministic synthetic scenarios; not production history",
+  "dataset_size": 5000,
+  "train_size": 4000,
+  "test_size": 1000,
+  "features": [
+    "processing_duration_ms",
+    "queue_depth",
+    "service_latency_ms",
+    "previous_stage_duration_ms",
+    "historical_service_latency_ms",
+    "sla_utilization",
+    "current_stage"
+  ],
+  "breach_classifier": {
+    "precision": 0.9725490196078431,
+    "recall": 0.9575289575289575,
+    "f1": 0.9649805447470817,
+    "report": {
+      "within_sla": {
+        "precision": 0.8595744680851064,
+        "recall": 0.905829596412556,
+        "f1-score": 0.8820960698689956,
+        "support": 223.0
+      },
+      "sla_breach": {
+        "precision": 0.9725490196078431,
+        "recall": 0.9575289575289575,
+        "f1-score": 0.9649805447470817,
+        "support": 777.0
+      },
+      "accuracy": 0.946,
+      "macro avg": {
+        "precision": 0.9160617438464748,
+        "recall": 0.9316792769707567,
+        "f1-score": 0.9235383073080387,
+        "support": 1000.0
+      },
+      "weighted avg": {
+        "precision": 0.9473556946182727,
+        "recall": 0.946,
+        "f1-score": 0.9464973068492685,
+        "support": 1000.0
+      }
+    },
+    "confusion_matrix": [
+      [
+        202,
+        21
+      ],
+      [
+        33,
+        744
+      ]
+    ]
+  },
+  "remaining_time_regressor": {
+    "mae_ms": 5639.430946347201,
+    "rmse_ms": 7068.738265523457
+  },
+  "probabilities_calibrated": false
+}

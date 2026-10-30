@@ -1,0 +1,342 @@
+{
+  "model_name": "api_failure_classifier",
+  "model_version": "api-failure-tfidf-lr-2026.10.1",
+  "model_type": "TfidfVectorizer+OneHotEncoder+LogisticRegression",
+  "trained_at": "2026-10-30T16:44:36.764304+00:00",
+  "data_source": "seeded synthetic scenarios; labels are scenario annotations, not production outcomes",
+  "feature_columns": [
+    "error_message",
+    "service",
+    "endpoint",
+    "status_code",
+    "response_ms",
+    "retry_count"
+  ],
+  "target": "label",
+  "train_records": 8400,
+  "validation": {
+    "accuracy": 0.9116666666666666,
+    "precision_macro": 0.913042978140062,
+    "recall_macro": 0.911768121994937,
+    "f1_macro": 0.9113182060851465,
+    "classification_report": {
+      "API_TIMEOUT": {
+        "precision": 0.9811320754716981,
+        "recall": 0.9411764705882353,
+        "f1-score": 0.9607390300230947,
+        "support": 221.0
+      },
+      "AUTHENTICATION_FAILURE": {
+        "precision": 0.9326923076923077,
+        "recall": 0.8699551569506726,
+        "f1-score": 0.9002320185614849,
+        "support": 223.0
+      },
+      "NETWORK_FAILURE": {
+        "precision": 0.9488372093023256,
+        "recall": 0.8947368421052632,
+        "f1-score": 0.9209932279909706,
+        "support": 228.0
+      },
+      "NORMAL": {
+        "precision": 0.8888888888888888,
+        "recall": 0.9824561403508771,
+        "f1-score": 0.9333333333333333,
+        "support": 228.0
+      },
+      "RATE_LIMIT": {
+        "precision": 0.8663793103448276,
+        "recall": 0.9392523364485982,
+        "f1-score": 0.9013452914798207,
+        "support": 214.0
+      },
+      "REQUEST_VALIDATION": {
+        "precision": 0.8869565217391304,
+        "recall": 0.9066666666666666,
+        "f1-score": 0.8967032967032967,
+        "support": 225.0
+      },
+      "SCHEMA_MISMATCH": {
+        "precision": 0.893719806763285,
+        "recall": 0.8114035087719298,
+        "f1-score": 0.8505747126436781,
+        "support": 228.0
+      },
+      "SERVER_ERROR": {
+        "precision": 0.9057377049180327,
+        "recall": 0.9484978540772532,
+        "f1-score": 0.9266247379454927,
+        "support": 233.0
+      },
+      "accuracy": 0.9116666666666666,
+      "macro avg": {
+        "precision": 0.913042978140062,
+        "recall": 0.911768121994937,
+        "f1-score": 0.9113182060851465,
+        "support": 1800.0
+      },
+      "weighted avg": {
+        "precision": 0.9131097303751415,
+        "recall": 0.9116666666666666,
+        "f1-score": 0.9113012523973546,
+        "support": 1800.0
+      }
+    },
+    "confusion_matrix": [
+      [
+        208,
+        0,
+        0,
+        0,
+        3,
+        0,
+        0,
+        10
+      ],
+      [
+        0,
+        194,
+        2,
+        0,
+        0,
+        16,
+        11,
+        0
+      ],
+      [
+        0,
+        0,
+        204,
+        6,
+        8,
+        0,
+        0,
+        10
+      ],
+      [
+        0,
+        0,
+        3,
+        224,
+        0,
+        0,
+        1,
+        0
+      ],
+      [
+        0,
+        3,
+        0,
+        0,
+        201,
+        5,
+        4,
+        1
+      ],
+      [
+        0,
+        9,
+        2,
+        0,
+        4,
+        204,
+        6,
+        0
+      ],
+      [
+        0,
+        2,
+        4,
+        22,
+        8,
+        5,
+        185,
+        2
+      ],
+      [
+        4,
+        0,
+        0,
+        0,
+        8,
+        0,
+        0,
+        221
+      ]
+    ],
+    "class_order": [
+      "API_TIMEOUT",
+      "AUTHENTICATION_FAILURE",
+      "NETWORK_FAILURE",
+      "NORMAL",
+      "RATE_LIMIT",
+      "REQUEST_VALIDATION",
+      "SCHEMA_MISMATCH",
+      "SERVER_ERROR"
+    ],
+    "records": 1800
+  },
+  "test": {
+    "accuracy": 0.9016666666666666,
+    "precision_macro": 0.9033597913912474,
+    "recall_macro": 0.9017100890201116,
+    "f1_macro": 0.9013074746023246,
+    "classification_report": {
+      "API_TIMEOUT": {
+        "precision": 0.976303317535545,
+        "recall": 0.9321266968325792,
+        "f1-score": 0.9537037037037037,
+        "support": 221.0
+      },
+      "AUTHENTICATION_FAILURE": {
+        "precision": 0.9289099526066351,
+        "recall": 0.8789237668161435,
+        "f1-score": 0.9032258064516129,
+        "support": 223.0
+      },
+      "NETWORK_FAILURE": {
+        "precision": 0.9402985074626866,
+        "recall": 0.8253275109170306,
+        "f1-score": 0.8790697674418605,
+        "support": 229.0
+      },
+      "NORMAL": {
+        "precision": 0.8893280632411067,
+        "recall": 0.9911894273127754,
+        "f1-score": 0.9375,
+        "support": 227.0
+      },
+      "RATE_LIMIT": {
+        "precision": 0.8755555555555555,
+        "recall": 0.9162790697674419,
+        "f1-score": 0.8954545454545455,
+        "support": 215.0
+      },
+      "REQUEST_VALIDATION": {
+        "precision": 0.8699551569506726,
+        "recall": 0.8584070796460177,
+        "f1-score": 0.8641425389755011,
+        "support": 226.0
+      },
+      "SCHEMA_MISMATCH": {
+        "precision": 0.8616071428571429,
+        "recall": 0.8502202643171806,
+        "f1-score": 0.8558758314855875,
+        "support": 227.0
+      },
+      "SERVER_ERROR": {
+        "precision": 0.8849206349206349,
+        "recall": 0.9612068965517241,
+        "f1-score": 0.9214876033057852,
+        "support": 232.0
+      },
+      "accuracy": 0.9016666666666666,
+      "macro avg": {
+        "precision": 0.9033597913912474,
+        "recall": 0.9017100890201116,
+        "f1-score": 0.9013074746023246,
+        "support": 1800.0
+      },
+      "weighted avg": {
+        "precision": 0.9032536110093204,
+        "recall": 0.9016666666666666,
+        "f1-score": 0.9012195716093196,
+        "support": 1800.0
+      }
+    },
+    "confusion_matrix": [
+      [
+        206,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        14
+      ],
+      [
+        0,
+        196,
+        4,
+        0,
+        0,
+        14,
+        9,
+        0
+      ],
+      [
+        0,
+        0,
+        189,
+        15,
+        11,
+        0,
+        0,
+        14
+      ],
+      [
+        0,
+        0,
+        1,
+        225,
+        0,
+        0,
+        1,
+        0
+      ],
+      [
+        0,
+        2,
+        2,
+        0,
+        197,
+        13,
+        1,
+        0
+      ],
+      [
+        0,
+        10,
+        2,
+        0,
+        0,
+        194,
+        20,
+        0
+      ],
+      [
+        0,
+        3,
+        3,
+        13,
+        12,
+        2,
+        193,
+        1
+      ],
+      [
+        5,
+        0,
+        0,
+        0,
+        4,
+        0,
+        0,
+        223
+      ]
+    ],
+    "class_order": [
+      "API_TIMEOUT",
+      "AUTHENTICATION_FAILURE",
+      "NETWORK_FAILURE",
+      "NORMAL",
+      "RATE_LIMIT",
+      "REQUEST_VALIDATION",
+      "SCHEMA_MISMATCH",
+      "SERVER_ERROR"
+    ],
+    "records": 1800
+  },
+  "probabilities_calibrated": false
+}

@@ -16,6 +16,15 @@ from pydantic import BaseModel, Field
 from sqlalchemy import Boolean, DateTime, Float, Integer, String, Text, create_engine, select
 from sqlalchemy.orm import DeclarativeBase, Mapped, Session, mapped_column, sessionmaker
 
+from app.api.v2_enterprise import router as enterprise_router
+from app.core.config import get_settings
+from app.core.logging import logger
+from app.telemetry.collector import telemetry
+from app.core.utils import new_correlation_id, new_trace_id
+from app.ml.inference import failure_classifier, rejection_classifier
+
+settings = get_settings()
+
 
 DATABASE_URL = os.getenv("DATABASE_URL", "sqlite:///./orderflow.db")
 engine_options: dict[str, Any] = {"check_same_thread": False} if DATABASE_URL.startswith("sqlite") else {}
@@ -105,6 +114,31 @@ class AuditLog(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now, index=True)
 
 
+class MLPredictionRecord(Base):
+    __tablename__ = "ml_predictions"
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    order_id: Mapped[str | None] = mapped_column(String(32), nullable=True, index=True)
+    incident_id: Mapped[str | None] = mapped_column(String(40), nullable=True, index=True)
+    task: Mapped[str] = mapped_column(String(40), index=True)
+    prediction: Mapped[str] = mapped_column(String(48))
+    confidence: Mapped[float] = mapped_column(Float)
+    probabilities: Mapped[str] = mapped_column(Text, default="{}")
+    model_name: Mapped[str] = mapped_column(String(64))
+    model_version: Mapped[str] = mapped_column(String(48))
+    safe_features: Mapped[str] = mapped_column(Text, default="{}")
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now, index=True)
+
+
+class MLFeedbackRecord(Base):
+    __tablename__ = "ml_feedback"
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    prediction_id: Mapped[int] = mapped_column(Integer, index=True)
+    actual_label: Mapped[str] = mapped_column(String(48))
+    prediction_correct: Mapped[bool] = mapped_column(Boolean)
+    actor: Mapped[str] = mapped_column(String(40), default="operator")
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now, index=True)
+
+
 class SimulationState(Base):
     __tablename__ = "simulation_state"
     id: Mapped[int] = mapped_column(Integer, primary_key=True, default=1)
@@ -165,7 +199,7 @@ randomizer = random.Random()
 
 SERVICES = [
     "Order Management", "Inventory", "Payment", "Provisioning",
-    "Logistics", "Notification",
+    "Logistics", "Notification", "Address Validation", "Business Rules",
 ]
 STAGES = ["Validation", "Inventory", "Payment", "Provisioning", "Logistics", "Completed"]
 FAILURES = {
@@ -188,6 +222,28 @@ def audit(db: Session, action: str, order_id: str | None = None, previous: str =
           result: str = "success", actor: str = "system") -> None:
     db.add(AuditLog(event_id=f"AUD-{secrets.token_hex(5).upper()}", order_id=order_id, actor=actor,
                     action=action, previous_state=previous, new_state=new, result=result))
+
+
+def persist_ml_prediction(db: Session, order_id: str | None, incident_id: str | None,
+                          task: str, result: dict[str, Any], safe_features: dict[str, Any]) -> MLPredictionRecord | None:
+    if not result.get("ok"):
+        return None
+    model_version = result.get("model_version", "unknown")
+    if isinstance(model_version, dict):
+        model_version = ";".join(f"{key}:{value}" for key, value in model_version.items())
+    record = MLPredictionRecord(
+        order_id=order_id,
+        incident_id=incident_id,
+        task=task,
+        prediction=str(result.get("prediction") or result.get("rejection_type") or result.get("sla_breach_probability")),
+        confidence=float(result.get("confidence", result.get("type_confidence", result.get("sla_breach_probability", 0.0)))),
+        probabilities=json.dumps(result.get("probabilities", result.get("type_probabilities", {}))),
+        model_name=str(result.get("model_name") or task),
+        model_version=str(model_version)[:48],
+        safe_features=json.dumps(safe_features),
+    )
+    db.add(record)
+    return record
 
 
 def record_event(db: Session, order: Order, stage: str, message: str, service: str, status: str) -> None:
@@ -220,7 +276,7 @@ def detect(category: str, status_code: int, elapsed_ms: int, threshold_ms: int =
     if category == "ORDER_DELAY":
         return elapsed_ms > threshold_ms, "Stage duration exceeded configured SLA" if elapsed_ms > threshold_ms else "Within SLA"
     if category == "ORDER_REJECTION":
-        return status_code in (400, 409, 422), "Business validation rejected the order" if status_code in (400, 409, 422) else "Accepted"
+        return status_code in (400, 402, 409, 422), "Business validation rejected the order" if status_code in (400, 402, 409, 422) else "Accepted"
     return False, "Unclassified event"
 
 
@@ -251,6 +307,14 @@ def create_order(db: Session, forced_category: str | None = None, forced_service
     service = forced_service or service
     if category == "NORMAL":
         service, failure_code, reason = "Order Management", 200, ""
+    elif category == "ORDER_REJECTION":
+        rejection_scenarios = {
+            "Address Validation": (422, "Postal code does not match the selected city"),
+            "Payment": (402, "Payment authorization declined by the synthetic provider"),
+            "Order Management": (409, "Duplicate order idempotency key already exists"),
+            "Business Rules": (422, "Requested plan is not eligible for this account"),
+        }
+        failure_code, reason = rejection_scenarios.get(service, (failure_code, reason))
     order = Order(
         order_id=order_id, customer_id=f"CUS-{randomizer.randint(10000, 99999)}",
         order_type=randomizer.choice(["New subscription", "Device upgrade", "Service add-on"]),
@@ -274,9 +338,33 @@ def create_order(db: Session, forced_category: str | None = None, forced_service
         record_event(db, order, service, reason, service, "failure")
         response_ms = randomizer.randint(32000, 55000) if category == "ORDER_DELAY" else randomizer.randint(1400, 48000)
         detected, _ = detect(category, failure_code, response_ms)
+        endpoint = f"/{service.lower().replace(' ', '-')}/process"
         db.add(ApiRequest(request_id=f"REQ-{secrets.token_hex(5).upper()}", order_id=order_id,
-                          source="Order Management", destination=service, endpoint=f"/{service.lower().replace(' ', '-')}/process",
+                          source="Order Management", destination=service, endpoint=endpoint,
                           method="POST", status_code=failure_code, response_ms=response_ms, error=reason))
+        model_prediction: dict[str, Any] | None = None
+        safe_features: dict[str, Any] = {
+            "status_code": failure_code,
+            "response_ms": response_ms,
+            "service": service,
+            "endpoint": endpoint,
+            "retry_count": 0,
+        }
+        if category == "API_ERROR":
+            model_prediction = failure_classifier.predict(
+                {**safe_features, "error_message": reason}
+            )
+        elif category == "ORDER_REJECTION":
+            model_prediction = rejection_classifier.predict(
+                {
+                    "status_code": failure_code,
+                    "service": service,
+                    "endpoint": endpoint,
+                    "rejection_reason": reason,
+                    "retry_count": 0,
+                    "alternative_inventory_available": False,
+                }
+            )
         if detected:
             cause, recommendation, evidence, confidence = analyze(category, service, failure_code, response_ms, reason)
             incident = Incident(incident_id=f"INC-{secrets.token_hex(5).upper()}", order_id=order_id,
@@ -286,6 +374,30 @@ def create_order(db: Session, forced_category: str | None = None, forced_service
                                 cause=cause, recommendation=recommendation, evidence=json.dumps(evidence),
                                 confidence=confidence)
             db.add(incident)
+            if model_prediction and model_prediction.get("ok"):
+                prediction_task = "api_failure" if category == "API_ERROR" else "order_rejection"
+                if category == "API_ERROR":
+                    subtype = model_prediction["prediction"]
+                    evidence.append(
+                        f"ML subtype: {subtype} ({model_prediction['confidence']:.1%}, {model_prediction['model_version']})"
+                    )
+                else:
+                    subtype = model_prediction["rejection_type"]
+                    evidence.append(
+                        f"ML rejection type: {subtype} ({model_prediction['type_confidence']:.1%})"
+                    )
+                    evidence.append(
+                        f"ML fixability: {model_prediction['fixability']} ({model_prediction['fixability_confidence']:.1%})"
+                    )
+                    recommendation = model_prediction["suggested_action"]
+                    incident.recommendation = recommendation
+                incident.evidence = json.dumps(evidence)
+                record = persist_ml_prediction(
+                    db, order_id, incident.incident_id, prediction_task, model_prediction,
+                    {key: value for key, value in safe_features.items() if key != "error_message"},
+                )
+                if record:
+                    audit(db, "ml.prediction.recorded", order_id, "", subtype)
             order.resolution_status = "approval_required" if category != "API_ERROR" else "retrying"
             audit(db, "failure.detected", order_id, "Processing", order.status)
             audit(db, "root_cause.analyzed", order_id, "", cause)
@@ -682,3 +794,8 @@ async def websocket_endpoint(socket: WebSocket) -> None:
             await socket.receive_text()
     except WebSocketDisconnect:
         manager.disconnect(socket)
+
+
+from app.monitoring.metrics import router as metrics_router
+app.include_router(metrics_router)
+app.include_router(enterprise_router)

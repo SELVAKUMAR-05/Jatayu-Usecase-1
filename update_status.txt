@@ -1,0 +1,3 @@
+# Update status
+cat >> /dev/null << 'EOF'
+EOF

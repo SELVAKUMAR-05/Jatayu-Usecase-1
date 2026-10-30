@@ -17,6 +17,8 @@ class Settings:
         self.CORS_ORIGINS = os.getenv("CORS_ORIGINS", "http://localhost:5173,http://localhost:3000").split(",")
         self.OPENAI_API_KEY = os.getenv("OPENAI_API_KEY", "")
         self.USE_LLM = os.getenv("USE_LLM", "false").lower() == "true"
+        self.LLM_API_BASE_URL = os.getenv("LLM_API_BASE_URL", "https://api.openai.com/v1")
+        self.LLM_MODEL = os.getenv("LLM_MODEL", "gpt-4o-mini")
         self.JWT_SECRET = os.getenv("JWT_SECRET", "dev-secret-change-me")
         self.JWT_ALGORITHM = os.getenv("JWT_ALGORITHM", "HS256")
         self.ACCESS_TOKEN_EXPIRE_MINUTES = int(os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES", "60"))

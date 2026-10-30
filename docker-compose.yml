@@ -1,14 +1,23 @@
+version: '3.8'
+
 services:
   backend:
     build: ./backend
     environment:
       DATABASE_URL: postgresql+psycopg://sentinel:sentinel@postgres:5432/orderflow
-      CORS_ORIGINS: http://localhost:3000
+      REDIS_URL: redis://redis:6379/0
+      KAFKA_BOOTSTRAP_SERVERS: kafka:9092
+      CORS_ORIGINS: http://localhost:3000,http://localhost:5173
+      ENV: docker
     ports:
       - "8000:8000"
     depends_on:
       postgres:
         condition: service_healthy
+      redis:
+        condition: service_healthy
+    volumes:
+      - ./ml/models:/app/../ml/models:ro
   frontend:
     build: ./frontend
     ports:
@@ -28,5 +37,27 @@ services:
       interval: 5s
       timeout: 3s
       retries: 10
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+  prometheus:
+    image: prom/prometheus:latest
+    volumes:
+      - ./infrastructure/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+    ports:
+      - "9090:9090"
+  grafana:
+    image: grafana/grafana:latest
+    ports:
+      - "3001:3000"
+    volumes:
+      - ./infrastructure/grafana/provisioning:/etc/grafana/provisioning:ro
+
 volumes:
   orderflow-data:

@@ -1,0 +1,210 @@
+{
+  "model_name": "order_rejection_classifier",
+  "model_version": "order-rejection-tfidf-lr-2026.10.1",
+  "model_type": "TfidfVectorizer+OneHotEncoder+LogisticRegression",
+  "trained_at": "2026-10-30T16:44:37.639744+00:00",
+  "data_source": "seeded synthetic scenarios; labels are scenario annotations, not production outcomes",
+  "feature_columns": [
+    "rejection_reason",
+    "service",
+    "endpoint",
+    "status_code",
+    "retry_count",
+    "alternative_inventory_available"
+  ],
+  "target": "rejection_type",
+  "train_records": 6300,
+  "validation": {
+    "accuracy": 0.9829629629629629,
+    "precision_macro": 0.9830593745181163,
+    "recall_macro": 0.9829248616819595,
+    "f1_macro": 0.9829659139896428,
+    "classification_report": {
+      "BUSINESS_RULE_VIOLATION": {
+        "precision": 0.9925373134328358,
+        "recall": 0.9888475836431226,
+        "f1-score": 0.9906890130353817,
+        "support": 269.0
+      },
+      "DUPLICATE_ORDER": {
+        "precision": 0.9699248120300752,
+        "recall": 0.9735849056603774,
+        "f1-score": 0.9717514124293786,
+        "support": 265.0
+      },
+      "INVALID_ADDRESS": {
+        "precision": 0.9640287769784173,
+        "recall": 0.9816849816849816,
+        "f1-score": 0.9727767695099818,
+        "support": 273.0
+      },
+      "INVENTORY_ISSUE": {
+        "precision": 1.0,
+        "recall": 0.9926470588235294,
+        "f1-score": 0.996309963099631,
+        "support": 272.0
+      },
+      "PAYMENT_ISSUE": {
+        "precision": 0.9888059701492538,
+        "recall": 0.977859778597786,
+        "f1-score": 0.9833024118738405,
+        "support": 271.0
+      },
+      "accuracy": 0.9829629629629629,
+      "macro avg": {
+        "precision": 0.9830593745181163,
+        "recall": 0.9829248616819595,
+        "f1-score": 0.9829659139896428,
+        "support": 1350.0
+      },
+      "weighted avg": {
+        "precision": 0.9830880640940433,
+        "recall": 0.9829629629629629,
+        "f1-score": 0.9829991040425471,
+        "support": 1350.0
+      }
+    },
+    "confusion_matrix": [
+      [
+        266,
+        3,
+        0,
+        0,
+        0
+      ],
+      [
+        1,
+        258,
+        5,
+        0,
+        1
+      ],
+      [
+        0,
+        4,
+        268,
+        0,
+        1
+      ],
+      [
+        0,
+        0,
+        1,
+        270,
+        1
+      ],
+      [
+        1,
+        1,
+        4,
+        0,
+        265
+      ]
+    ],
+    "class_order": [
+      "BUSINESS_RULE_VIOLATION",
+      "DUPLICATE_ORDER",
+      "INVALID_ADDRESS",
+      "INVENTORY_ISSUE",
+      "PAYMENT_ISSUE"
+    ],
+    "records": 1350
+  },
+  "test": {
+    "accuracy": 0.9911111111111112,
+    "precision_macro": 0.9911480158887128,
+    "recall_macro": 0.9910996451507472,
+    "f1_macro": 0.9910993161311563,
+    "classification_report": {
+      "BUSINESS_RULE_VIOLATION": {
+        "precision": 0.9962406015037594,
+        "recall": 0.9851301115241635,
+        "f1-score": 0.9906542056074766,
+        "support": 269.0
+      },
+      "DUPLICATE_ORDER": {
+        "precision": 0.9814126394052045,
+        "recall": 0.9924812030075187,
+        "f1-score": 0.9869158878504672,
+        "support": 266.0
+      },
+      "INVALID_ADDRESS": {
+        "precision": 0.9818181818181818,
+        "recall": 0.9926470588235294,
+        "f1-score": 0.9872029250457038,
+        "support": 272.0
+      },
+      "INVENTORY_ISSUE": {
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1-score": 1.0,
+        "support": 272.0
+      },
+      "PAYMENT_ISSUE": {
+        "precision": 0.996268656716418,
+        "recall": 0.985239852398524,
+        "f1-score": 0.9907235621521335,
+        "support": 271.0
+      },
+      "accuracy": 0.9911111111111112,
+      "macro avg": {
+        "precision": 0.9911480158887128,
+        "recall": 0.9910996451507472,
+        "f1-score": 0.9910993161311563,
+        "support": 1350.0
+      },
+      "weighted avg": {
+        "precision": 0.9911761743044373,
+        "recall": 0.9911111111111112,
+        "f1-score": 0.991119176616515,
+        "support": 1350.0
+      }
+    },
+    "confusion_matrix": [
+      [
+        265,
+        1,
+        2,
+        0,
+        1
+      ],
+      [
+        0,
+        264,
+        2,
+        0,
+        0
+      ],
+      [
+        0,
+        2,
+        270,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0,
+        272,
+        0
+      ],
+      [
+        1,
+        2,
+        1,
+        0,
+        267
+      ]
+    ],
+    "class_order": [
+      "BUSINESS_RULE_VIOLATION",
+      "DUPLICATE_ORDER",
+      "INVALID_ADDRESS",
+      "INVENTORY_ISSUE",
+      "PAYMENT_ISSUE"
+    ],
+    "records": 1350
+  },
+  "probabilities_calibrated": false
+}

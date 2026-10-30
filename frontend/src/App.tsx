@@ -20,6 +20,7 @@ type Incident = { incident_id: string; order_id: string; category: string; servi
 type Order = { order_id: string; customer_id: string; order_type: string; status: string; stage: string; priority: string; failure_reason?: string; resolution_status: string; created_at: string; value: number; correlation_id: string };
 type Health = { name: string; status: string; latency?: number; uptime?: number };
 type Dashboard = { metrics: Metric; processing_overview: { label: string; success: number; failed: number; delayed: number }[]; failure_distribution: { name: string; value: number; color: string }[]; service_health: Health[]; recent_incidents: Incident[] };
+type StoredPrediction = { prediction_id: number; order_id: string | null; incident_id: string | null; task: string; prediction: string; confidence: number; probabilities: Record<string, number>; model_name: string; model_version: string; created_at: string };
 type NavItem = { label: string; icon: typeof Activity; section?: string };
 
 const nav: NavItem[] = [
@@ -27,7 +28,8 @@ const nav: NavItem[] = [
   { label: "Order monitoring", icon: Package },
   { label: "API monitoring", icon: Network },
   { label: "Failure detection", icon: ShieldAlert },
-  { section: "INTELLIGENCE", label: "Root cause analysis", icon: Sparkles },
+  { section: "INTELLIGENCE", label: "Predictive intelligence", icon: Activity },
+  { label: "Root cause analysis", icon: Sparkles },
   { label: "Resolution center", icon: ShieldCheck },
   { label: "Service health", icon: Activity },
   { label: "Analytics & reports", icon: BarChart3 },
@@ -95,8 +97,8 @@ function App() {
     api.post(simulationRunning ? "/simulation/pause" : "/simulation/start"));
 
   const generate = (count: number) => action(`${count} synthetic orders generated`, () => api.post("/simulation/generate", { count }));
-  const inject = (category: string) => action(`${human(category)} injected into the simulation`, () =>
-    api.post("/simulation/inject-failure", { category, service: category === "API_ERROR" ? "Provisioning" : category === "ORDER_DELAY" ? "Logistics" : "Inventory" }));
+  const inject = (category: string, selectedService?: string) => action(`${human(category)} injected into the simulation`, () =>
+    api.post("/simulation/inject-failure", { category, service: selectedService ?? (category === "API_ERROR" ? "Provisioning" : category === "ORDER_DELAY" ? "Logistics" : "Inventory") }));
 
   const openOrder = async (order: Order) => {
     setSelectedOrder(order);
@@ -166,6 +168,7 @@ function App() {
               {page === "Order monitoring" && <OrdersPage orders={filteredOrders} search={search} setSearch={setSearch} status={statusFilter} setStatus={setStatusFilter} onOpen={openOrder} onGenerate={generate} busy={busy} />}
               {page === "API monitoring" && <ApiMonitoring logs={logs} />}
               {page === "Failure detection" && <IncidentsPage incidents={incidents} onOpen={setSelectedIncident} />}
+              {page === "Predictive intelligence" && <PredictionPage orders={orders} />}
               {page === "Root cause analysis" && <RootCausePage incidents={incidents} onOpen={setSelectedIncident} />}
               {page === "Resolution center" && <ResolutionPage incidents={incidents} onResolve={performResolution} busy={busy} onOpen={setSelectedIncident} />}
               {page === "Service health" && <ServicePage services={dashboard?.service_health ?? []} />}
@@ -189,9 +192,182 @@ function PageHeading({ eyebrow, title, description, actions }: { eyebrow: string
   return <div className="page-heading"><div><div className="eyebrow">{eyebrow}</div><h1>{title}</h1><p>{description}</p></div>{actions && <div className="heading-actions">{actions}</div>}</div>;
 }
 
+type DelayInputs = {
+  processing_duration_ms: number;
+  current_stage: string;
+  queue_depth: number;
+  service_latency_ms: number;
+  previous_stage_duration_ms: number;
+  historical_service_latency_ms: number;
+  sla_utilization: number;
+};
+
+type DelayPrediction = {
+  sla_breach_probability: number;
+  estimated_remaining_processing_ms: number;
+  alert_candidate: boolean;
+  alert_threshold: number;
+  risk_level: string;
+  automatic_action: boolean;
+  probabilities_calibrated: boolean;
+  most_likely_bottleneck: string;
+  contributing_factors: string[];
+  recommended_preventive_action: string;
+  model_version: string;
+  data_source: string;
+  evaluation: {
+    breach_classifier: { f1: number };
+    remaining_time_regressor: { mae_ms: number };
+  };
+};
+
+function PredictionPage({ orders }: { orders: Order[] }) {
+  const activeOrders = orders.filter((order) => ["Processing", "Delayed", "Failed"].includes(order.status));
+  const [inputs, setInputs] = useState<DelayInputs>({
+    processing_duration_ms: 90000,
+    current_stage: "PROVISIONING",
+    queue_depth: 130,
+    service_latency_ms: 4200,
+    previous_stage_duration_ms: 22000,
+    historical_service_latency_ms: 700,
+    sla_utilization: 0.75,
+  });
+  const [prediction, setPrediction] = useState<DelayPrediction | null>(null);
+  const [error, setError] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [selectedOrderId, setSelectedOrderId] = useState("");
+  const [rejectionReason, setRejectionReason] = useState("postal code does not match the selected city");
+  const [rejectionPrediction, setRejectionPrediction] = useState<Record<string, unknown> | null>(null);
+  const [rejectionError, setRejectionError] = useState("");
+  const [metrics, setMetrics] = useState<Record<string, any> | null>(null);
+  const [recent, setRecent] = useState<StoredPrediction[]>([]);
+  const [feedbackLabels, setFeedbackLabels] = useState<Record<number, string>>({});
+  const [feedbackNotice, setFeedbackNotice] = useState("");
+
+  const refreshModels = async () => {
+    try {
+      const [modelResponse, predictionResponse] = await Promise.all([
+        api.get("/v2/ml/metrics"), api.get("/v2/ml/predictions/recent?limit=20"),
+      ]);
+      setMetrics(modelResponse.data.models);
+      setRecent(predictionResponse.data.predictions);
+    } catch (requestError) {
+      setError(String(errorMessage(requestError)));
+    }
+  };
+
+  useEffect(() => {
+    if (!selectedOrderId && activeOrders.length) setSelectedOrderId(activeOrders[0].order_id);
+  }, [activeOrders, selectedOrderId]);
+
+  useEffect(() => { void refreshModels(); }, []);
+
+  const submit = async (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    setLoading(true);
+    setError("");
+    try {
+      const path = selectedOrderId
+        ? `/v2/ml/orders/${encodeURIComponent(selectedOrderId)}/delay-predict`
+        : "/v2/ml/delay-predict";
+      const response = selectedOrderId
+        ? await api.post<DelayPrediction>(path)
+        : await api.post<DelayPrediction>(path, inputs);
+      setPrediction(response.data);
+      await refreshModels();
+    } catch (requestError) {
+      setError(String(errorMessage(requestError)));
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const updateNumber = (key: Exclude<keyof DelayInputs, "current_stage">, value: string) => {
+    setInputs((current) => ({ ...current, [key]: Number(value) }));
+  };
+  const fields: { key: Exclude<keyof DelayInputs, "current_stage">; label: string; step: number; max?: number }[] = [
+    { key: "processing_duration_ms", label: "Elapsed processing (ms)", step: 1000 },
+    { key: "queue_depth", label: "Queue depth", step: 1 },
+    { key: "service_latency_ms", label: "Current service latency (ms)", step: 50 },
+    { key: "previous_stage_duration_ms", label: "Previous stage duration (ms)", step: 500 },
+    { key: "historical_service_latency_ms", label: "Historical service latency (ms)", step: 50 },
+    { key: "sla_utilization", label: "Current SLA utilization (0-1.5)", step: 0.05, max: 1.5 },
+  ];
+
+  const submitRejection = async (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    setRejectionError("");
+    try {
+      const response = await api.post("/v2/ml/rejections/predict", {
+        status_code: 422,
+        service: "Address Validation",
+        endpoint: "/orders/address/validate",
+        rejection_reason: rejectionReason,
+        retry_count: 0,
+        alternative_inventory_available: false,
+      });
+      setRejectionPrediction(response.data);
+      await refreshModels();
+    } catch (requestError) {
+      setRejectionError(String(errorMessage(requestError)));
+    }
+  };
+
+  const submitFeedback = async (item: StoredPrediction) => {
+    const actualLabel = feedbackLabels[item.prediction_id] ?? item.prediction;
+    try {
+      await api.post("/v2/ml/feedback", {
+        prediction_id: item.prediction_id,
+        actual_label: actualLabel,
+        prediction_correct: actualLabel === item.prediction,
+      });
+      setFeedbackNotice("Feedback stored for review; it does not retrain the active model.");
+      await refreshModels();
+    } catch (requestError) {
+      setFeedbackNotice(String(errorMessage(requestError)));
+    }
+  };
+
+  return <>
+    <PageHeading eyebrow="PREDICTIVE INTELLIGENCE" title="Order delay risk" description="Use persisted order telemetry when an active order is selected, or submit a feature scenario." />
+    <form className="panel prediction-panel" onSubmit={submit}>
+      <div className="prediction-form-grid">
+        <label className="prediction-field"><span>Persisted active order</span><select value={selectedOrderId} onChange={(event) => setSelectedOrderId(event.target.value)}><option value="">Use feature inputs</option>{activeOrders.map((order) => <option value={order.order_id} key={order.order_id}>{order.order_id} · {order.stage} · {order.status}</option>)}</select></label>
+        <label className="prediction-field"><span>Current order stage</span><select value={inputs.current_stage} onChange={(event) => setInputs((current) => ({ ...current, current_stage: event.target.value }))}>{["VALIDATING", "INVENTORY", "PAYMENT", "PROVISIONING", "LOGISTICS"].map((stage) => <option key={stage}>{stage}</option>)}</select></label>
+        {fields.map((field) => <label className="prediction-field" key={field.key}><span>{field.label}</span><input type="number" min="0" max={field.max} step={field.step} value={inputs[field.key]} onChange={(event) => updateNumber(field.key, event.target.value)} required /></label>)}
+        <div className="prediction-submit"><button className="button button-primary" type="submit" disabled={loading}><Activity size={15} />{loading ? "Estimating..." : selectedOrderId ? "Predict selected order" : "Estimate delay risk"}</button></div>
+      </div>
+      {error && <div className="prediction-error" role="alert">{error}</div>}
+    </form>
+    {prediction && <>
+      <div className="prediction-results">
+        <div className="panel prediction-result"><span>SLA breach probability</span><strong>{(prediction.sla_breach_probability * 100).toFixed(1)}%</strong><small>{prediction.risk_level} risk · uncalibrated probability</small></div>
+        <div className="panel prediction-result"><span>Estimated remaining time</span><strong>{(prediction.estimated_remaining_processing_ms / 1000).toFixed(1)}s</strong><small>Regressor estimate</small></div>
+        <div className="panel prediction-result"><span>Alert threshold</span><strong>{prediction.alert_candidate ? "Candidate" : "Not reached"}</strong><small>{(prediction.alert_threshold * 100).toFixed(0)}% policy threshold</small></div>
+        <div className="panel prediction-result"><span>Likely bottleneck</span><strong>{prediction.most_likely_bottleneck}</strong><small>Feature-threshold heuristic</small></div>
+      </div>
+      <div className="panel prediction-recommendation"><div><strong>Preventive action</strong><p>{prediction.recommended_preventive_action}</p><ul>{prediction.contributing_factors.map((factor) => <li key={factor}>{factor}</li>)}</ul></div><div><span>Model {prediction.model_version}</span><span>Held-out synthetic F1 {(prediction.evaluation.breach_classifier.f1 * 100).toFixed(1)}%</span><span>Remaining-time MAE {(prediction.evaluation.remaining_time_regressor.mae_ms / 1000).toFixed(1)}s</span></div></div>
+      <div className="notice-muted"><ShieldCheck size={15} /> {prediction.data_source}. Probability calibration is not established; this candidate does not trigger an automatic action.</div>
+    </>}
+    <div className="section-title-row"><div><h2>Model performance</h2><p>Held-out synthetic test results. Not production accuracy.</p></div></div>
+    <div className="prediction-results">
+      {[["API failure subtype", metrics?.api_failure_classifier?.test?.f1_macro], ["Rejection type", metrics?.order_rejection_classifier?.test?.f1_macro], ["Rejection fixability", metrics?.rejection_fixability?.test?.f1_macro]].map(([label, f1]) => <div className="panel prediction-result" key={String(label)}><span>{String(label)}</span><strong>{typeof f1 === "number" ? `${(f1 * 100).toFixed(1)}%` : "Unavailable"}</strong><small>Test macro F1</small></div>)}
+    </div>
+    <section className="panel rejection-analysis">
+      <div className="panel-heading"><div><div className="panel-title">Order rejection analysis</div><div className="panel-subtitle">Classifies the supplied synthetic rejection reason; recommendations are policy mappings.</div></div></div>
+      <form className="rejection-form" onSubmit={submitRejection}><label className="prediction-field"><span>Rejection evidence</span><input value={rejectionReason} onChange={(event) => setRejectionReason(event.target.value)} minLength={3} maxLength={1000} required /></label><button className="button button-outline" type="submit">Classify rejection</button></form>
+      {rejectionError && <div className="prediction-error" role="alert">{rejectionError}</div>}
+      {rejectionPrediction && <div className="rejection-result"><strong>{String(rejectionPrediction.rejection_type)} · {String(rejectionPrediction.fixability)}</strong><span>Type confidence {((Number(rejectionPrediction.type_confidence) || 0) * 100).toFixed(1)}% · Fixability confidence {((Number(rejectionPrediction.fixability_confidence) || 0) * 100).toFixed(1)}%</span><p>{String(rejectionPrediction.suggested_action)}</p><small>Human approval remains required for business changes.</small></div>}
+    </section>
+    <div className="section-title-row"><div><h2>Recent model predictions</h2><p>Persisted model outputs and operator feedback.</p></div></div>
+    {feedbackNotice && <div className="notice-muted">{feedbackNotice}</div>}
+    {!recent.length ? <div className="panel"><EmptyState label="Predictions appear after classifying a failure, rejection, or order delay." /></div> : <div className="panel data-panel"><div className="table-scroll"><table className="data-table"><thead><tr><th>ORDER / TASK</th><th>PREDICTION</th><th>CONFIDENCE</th><th>MODEL</th><th>FEEDBACK LABEL</th><th /></tr></thead><tbody>{recent.map((item) => <tr key={item.prediction_id}><td>{item.order_id ?? item.task}</td><td>{item.prediction}</td><td>{(item.confidence * 100).toFixed(1)}%</td><td>{item.model_version}</td><td><select value={feedbackLabels[item.prediction_id] ?? item.prediction} onChange={(event) => setFeedbackLabels((current) => ({ ...current, [item.prediction_id]: event.target.value }))}>{Object.keys(item.probabilities).length ? Object.keys(item.probabilities).map((label) => <option key={label}>{label}</option>) : <option>{item.prediction}</option>}</select></td><td><button className="button button-outline button-small" onClick={() => void submitFeedback(item)}>Submit</button></td></tr>)}</tbody></table></div></div>}
+  </>;
+}
+
 function Overview({ dashboard, orders, incidents, onNavigate, onOpenIncident, onOpenOrder, simulationRunning, onToggleSimulation, onGenerate, onInject, busy }: {
   dashboard: Dashboard | null; orders: Order[]; incidents: Incident[]; onNavigate: (page: string) => void; onOpenIncident: (incident: Incident) => void; onOpenOrder: (order: Order) => void;
-  simulationRunning: boolean; onToggleSimulation: () => void; onGenerate: (count: number) => void; onInject: (category: string) => void; busy: boolean;
+  simulationRunning: boolean; onToggleSimulation: () => void; onGenerate: (count: number) => void; onInject: (category: string, service?: string) => void; busy: boolean;
 }) {
   const m = dashboard?.metrics;
   const metrics = [
@@ -349,11 +525,12 @@ function AuditPage({ rows }: { rows: Record<string, unknown>[] }) {
   </>;
 }
 
-function SettingsPage({ simulationRunning, onToggleSimulation, onGenerate, onInject, busy }: { simulationRunning: boolean; onToggleSimulation: () => void; onGenerate: (n: number) => void; onInject: (c: string) => void; busy: boolean }) {
+function SettingsPage({ simulationRunning, onToggleSimulation, onGenerate, onInject, busy }: { simulationRunning: boolean; onToggleSimulation: () => void; onGenerate: (n: number) => void; onInject: (c: string, service?: string) => void; busy: boolean }) {
+  const [rejectionService, setRejectionService] = useState("Inventory");
   return <><PageHeading eyebrow="PLATFORM CONFIGURATION" title="Settings" description="Manage local simulation behavior and test safe recovery paths." />
     <div className="settings-layout"><div className="panel settings-card"><div className="settings-title"><div className="settings-icon"><Radio size={17} /></div><div><h3>Simulation environment</h3><p>Controls the synthetic order generation service.</p></div></div><div className="settings-row"><div><strong>Continuous order generation</strong><span>Creates synthetic traffic every 7 seconds while running.</span></div><button className={`toggle ${simulationRunning ? "on" : ""}`} onClick={onToggleSimulation} aria-label="Toggle order simulation"><i /></button></div><div className="settings-row"><div><strong>Generation interval</strong><span>Fixed interval for the local demo environment.</span></div><span className="setting-value">7 seconds</span></div><div className="settings-row"><div><strong>Customer data</strong><span>Random synthetic customer IDs; no real PII.</span></div><span className="setting-value setting-safe"><ShieldCheck size={14} /> Synthetic</span></div></div>
       <div className="panel settings-card"><div className="settings-title"><div className="settings-icon purple"><Shield size={17} /></div><div><h3>Recovery safety policies</h3><p>Protecting high-impact operations from automatic execution.</p></div></div>{[["Bounded retries", "Maximum 3 attempts with exponential backoff"], ["Idempotency", "Retry requests preserve the original order key"], ["Operator approval", "Required for inventory and business corrections"], ["Audit trail", "All simulation and resolution operations recorded"]].map(([label, text]) => <div className="policy-row" key={label}><ShieldCheck size={15} /><div><strong>{label}</strong><span>{text}</span></div><span className="policy-active">ACTIVE</span></div>)}</div>
-      <div className="panel settings-card"><div className="settings-title"><div className="settings-icon orange"><AlertTriangle size={17} /></div><div><h3>Failure injection</h3><p>Trigger controlled test incidents against the simulator.</p></div></div><div className="inject-grid"><button className="button button-fault" onClick={() => onInject("API_ERROR")} disabled={busy}><Network size={15} /> API error</button><button className="button button-fault" onClick={() => onInject("ORDER_DELAY")} disabled={busy}><Clock3 size={15} /> Order delay</button><button className="button button-fault" onClick={() => onInject("ORDER_REJECTION")} disabled={busy}><Package size={15} /> Order rejection</button><button className="button button-subtle" onClick={() => onGenerate(50)} disabled={busy}><Layers3 size={15} /> Generate 50 orders</button></div></div></div>
+      <div className="panel settings-card"><div className="settings-title"><div className="settings-icon orange"><AlertTriangle size={17} /></div><div><h3>Failure injection</h3><p>Trigger controlled test incidents against the simulator.</p></div></div><label className="failure-service-select"><span>Rejection scenario</span><select value={rejectionService} onChange={(event) => setRejectionService(event.target.value)}>{["Inventory", "Address Validation", "Payment", "Order Management", "Business Rules"].map((service) => <option key={service}>{service}</option>)}</select></label><div className="inject-grid"><button className="button button-fault" onClick={() => onInject("API_ERROR")} disabled={busy}><Network size={15} /> API error</button><button className="button button-fault" onClick={() => onInject("ORDER_DELAY")} disabled={busy}><Clock3 size={15} /> Order delay</button><button className="button button-fault" onClick={() => onInject("ORDER_REJECTION", rejectionService)} disabled={busy}><Package size={15} /> Inject selected rejection</button><button className="button button-subtle" onClick={() => onGenerate(50)} disabled={busy}><Layers3 size={15} /> Generate 50 orders</button></div></div></div>
   </>;
 }
 
