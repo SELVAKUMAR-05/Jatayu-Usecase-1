@@ -13,7 +13,7 @@ from typing import Any
 from fastapi import Depends, FastAPI, HTTPException, Query, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
-from sqlalchemy import Boolean, DateTime, Float, Integer, String, Text, create_engine, select
+from sqlalchemy import Boolean, DateTime, Float, Integer, String, Text, create_engine, inspect, select, text
 from sqlalchemy.orm import DeclarativeBase, Mapped, Session, mapped_column, sessionmaker
 
 from app.api.v2_enterprise import router as enterprise_router
@@ -55,6 +55,7 @@ class Order(Base):
     completed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     value: Mapped[float] = mapped_column(Float, default=129.99)
     correlation_id: Mapped[str] = mapped_column(String(48))
+    sla_deadline_ms: Mapped[int] = mapped_column(Integer, default=settings.SLA_DEFAULT_MS)
 
 
 class Incident(Base):
@@ -250,6 +251,27 @@ def record_event(db: Session, order: Order, stage: str, message: str, service: s
     db.add(Event(order_id=order.order_id, stage=stage, message=message, service=service, status=status))
 
 
+def calculate_order_sla_deadline(priority: str | None = None, stage: str | None = None) -> int:
+    base_ms = int(getattr(settings, "SLA_DEFAULT_MS", 30000))
+    priority_factor = {"Critical": 0.75, "High": 0.9, "Standard": 1.0}.get(priority or "Standard", 1.0)
+    stage_factor = {"Validation": 1.0, "Inventory": 1.1, "Payment": 1.2, "Provisioning": 1.3, "Logistics": 1.4}.get(stage or "Validation", 1.0)
+    return max(15000, int(base_ms * priority_factor * stage_factor))
+
+
+def order_within_sla(order: Order) -> bool:
+    if order.created_at.tzinfo is None:
+        created_at = order.created_at.replace(tzinfo=timezone.utc)
+    else:
+        created_at = order.created_at
+    if order.completed_at is not None:
+        end_at = order.completed_at
+        if end_at.tzinfo is None:
+            end_at = end_at.replace(tzinfo=timezone.utc)
+        return (end_at - created_at).total_seconds() * 1000 <= max(order.sla_deadline_ms, 1)
+    deadline_at = created_at + timedelta(milliseconds=max(order.sla_deadline_ms, 1))
+    return now() <= deadline_at
+
+
 def serialize_order(order: Order) -> dict[str, Any]:
     return {
         "order_id": order.order_id, "customer_id": order.customer_id, "order_type": order.order_type,
@@ -257,6 +279,7 @@ def serialize_order(order: Order) -> dict[str, Any]:
         "failure_reason": order.failure_reason, "resolution_status": order.resolution_status,
         "created_at": order.created_at.isoformat(), "completed_at": order.completed_at.isoformat() if order.completed_at else None,
         "value": order.value, "correlation_id": order.correlation_id,
+        "sla_deadline_ms": int(getattr(order, "sla_deadline_ms", settings.SLA_DEFAULT_MS)),
     }
 
 
@@ -315,11 +338,13 @@ def create_order(db: Session, forced_category: str | None = None, forced_service
             "Business Rules": (422, "Requested plan is not eligible for this account"),
         }
         failure_code, reason = rejection_scenarios.get(service, (failure_code, reason))
+    priority = randomizer.choice(["Standard", "High", "Critical"])
     order = Order(
         order_id=order_id, customer_id=f"CUS-{randomizer.randint(10000, 99999)}",
         order_type=randomizer.choice(["New subscription", "Device upgrade", "Service add-on"]),
-        status="Processing", stage="Validation", priority=randomizer.choice(["Standard", "High", "Critical"]),
+        status="Processing", stage="Validation", priority=priority,
         correlation_id=f"cor-{secrets.token_hex(8)}", value=round(randomizer.uniform(49.99, 899.99), 2),
+        sla_deadline_ms=calculate_order_sla_deadline(priority, "Validation"),
     )
     db.add(order)
     db.flush()
@@ -421,6 +446,11 @@ def create_order(db: Session, forced_category: str | None = None, forced_service
 
 def ensure_database() -> None:
     Base.metadata.create_all(engine)
+    with engine.begin() as connection:
+        table_columns = inspect(connection).get_columns("orders")
+        column_names = {column["name"] for column in table_columns}
+        if "sla_deadline_ms" not in column_names:
+            connection.execute(text("ALTER TABLE orders ADD COLUMN sla_deadline_ms INTEGER NOT NULL DEFAULT 30000"))
     with SessionLocal() as db:
         if db.get(SimulationState, 1) is None:
             db.add(SimulationState(id=1, running=False))
@@ -736,6 +766,10 @@ def analytics_overview(db: Session = Depends(get_db)) -> dict[str, Any]:
     resolved = [i for i in incidents if i.status == "resolved"]
     recoveries = [o for o in orders if o.resolution_status in ("auto_recovered", "recovered", "approved_recovery")]
     durations = [(i.resolved_at - i.created_at).total_seconds() for i in resolved if i.resolved_at]
+    sla_orders = [o for o in orders if getattr(o, "sla_deadline_ms", None) is not None]
+    sla_compliance = None
+    if sla_orders:
+        sla_compliance = round(100 * sum(1 for o in sla_orders if order_within_sla(o)) / max(len(sla_orders), 1), 1)
     return {
         **data["metrics"],
         "completion_percentage": data["metrics"]["success_rate"],
@@ -744,7 +778,8 @@ def analytics_overview(db: Session = Depends(get_db)) -> dict[str, Any]:
         "manual_interventions": sum(i.status == "resolved" and i.category != "API_ERROR" for i in incidents),
         "mttd_seconds": 1.8 if incidents else 0,
         "mttr_seconds": round(sum(durations) / len(durations), 1) if durations else 0,
-        "sla_compliance": round(100 * sum(o.status == "Completed" for o in orders) / max(len(orders), 1), 1),
+        "sla_compliance": sla_compliance,
+        "sla_metric_basis": "Persisted per-order SLA deadlines" if sla_compliance is not None else "Unavailable: per-order SLA deadlines are not persisted",
         "estimated_recovered_value": round(sum(o.value for o in recoveries), 2),
         "api_requests": len(requests),
     }
@@ -764,7 +799,12 @@ def analytics_recovery(db: Session = Depends(get_db)) -> dict[str, Any]:
 
 @app.get("/api/analytics/sla")
 def analytics_sla(db: Session = Depends(get_db)) -> dict[str, Any]:
-    return {"compliance_percentage": analytics_overview(db)["sla_compliance"], "target_percentage": 99.0}
+    overview = analytics_overview(db)
+    return {
+        "compliance_percentage": overview["sla_compliance"],
+        "target_percentage": 99.0,
+        "metric_basis": overview["sla_metric_basis"],
+    }
 
 
 @app.get("/api/audit-logs")

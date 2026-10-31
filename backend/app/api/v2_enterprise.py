@@ -267,7 +267,7 @@ def ml_order_delay_predict(order_id: str, db: Session = Depends(get_db)):
             Order.status.in_(("Processing", "Delayed", "Failed")),
         )
     ).all()
-    sla_deadline_ms = int(delay_prediction_service.artifact["sla_deadline_ms"])
+    sla_deadline_ms = int(getattr(order, "sla_deadline_ms", delay_prediction_service.artifact.get("sla_deadline_ms", 30000)))
     features = {
         "processing_duration_ms": elapsed_ms,
         "current_stage": model_stage,
@@ -566,6 +566,26 @@ def analytics_metrics(db: Session = Depends(get_db)):
         incident.status == "resolved" and incident.category != "API_ERROR"
         for incident in incidents
     )
+    sla_orders = [order for order in orders if getattr(order, "sla_deadline_ms", None) is not None]
+    sla_compliance = None
+    if sla_orders:
+        sla_met = 0
+        for order in sla_orders:
+            created_at = order.created_at
+            if created_at.tzinfo is None:
+                created_at = created_at.replace(tzinfo=timezone.utc)
+            if order.completed_at is not None:
+                completed_at = order.completed_at
+                if completed_at.tzinfo is None:
+                    completed_at = completed_at.replace(tzinfo=timezone.utc)
+                duration_ms = (completed_at - created_at).total_seconds() * 1000
+                if duration_ms <= max(order.sla_deadline_ms, 1):
+                    sla_met += 1
+            elif order.status in {"Processing", "Delayed", "Failed", "Rejected"}:
+                remaining_ms = max(order.sla_deadline_ms, 1) - (datetime.now(timezone.utc) - created_at).total_seconds() * 1000
+                if remaining_ms >= 0:
+                    sla_met += 1
+        sla_compliance = round(100 * sla_met / len(sla_orders), 1)
     return {
         "orders_total": len(orders),
         "incidents_total": len(incidents),
@@ -573,7 +593,7 @@ def analytics_metrics(db: Session = Depends(get_db)):
         "mttr_min": round(sum(resolution_seconds) / len(resolution_seconds) / 60, 2) if resolution_seconds else 0,
         "auto_recovery_rate": round(recovered / len(incidents), 4) if incidents else 0,
         "manual_intervention_rate": round(manual_count / resolved_count, 4) if resolved_count else 0,
-        "sla_compliance": None,
-        "sla_metric_basis": "Unavailable: per-order SLA deadlines are not persisted",
+        "sla_compliance": sla_compliance,
+        "sla_metric_basis": "Persisted per-order SLA deadlines" if sla_compliance is not None else "Unavailable: per-order SLA deadlines are not persisted",
         "order_completion_rate": round(completed / len(orders), 4) if orders else 0,
     }

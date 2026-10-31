@@ -80,13 +80,30 @@ def test_v2_analytics_and_approvals_use_persisted_records() -> None:
 
     assert metrics["orders_total"] == order_count
     assert metrics["incidents_total"] == incident_count
-    assert metrics["sla_compliance"] is None
-    assert "Unavailable" in metrics["sla_metric_basis"]
+    assert metrics["sla_compliance"] is not None
+    assert metrics["sla_metric_basis"] == "Persisted per-order SLA deadlines"
     assert any(item["order_id"] == injected["order_id"] for item in approvals)
     assert decision.status_code == 200
     assert decision.json()["incident"]["status"] == "resolved"
     assert decision.json()["order"]["status"] == "Completed"
     assert any(item["order_id"] == injected["order_id"] and item["action"] == "resolution.approve" for item in audit)
+
+
+def test_order_sla_deadlines_are_persisted_and_used_for_metrics() -> None:
+    with TestClient(app) as client:
+        response = client.post(
+            "/api/orders",
+            json={"order_type": "Service add-on", "priority": "High"},
+        )
+        order = response.json()
+        metrics = client.get("/api/v2/analytics/metrics").json()
+        saved_order = client.get(f"/api/orders/{order['order_id']}").json()
+
+    assert response.status_code == 201
+    assert order["sla_deadline_ms"] > 0
+    assert saved_order["sla_deadline_ms"] == order["sla_deadline_ms"]
+    assert metrics["sla_compliance"] is not None
+    assert metrics["sla_metric_basis"] == "Persisted per-order SLA deadlines"
 
 
 def test_delay_model_api_is_deterministic_and_reports_synthetic_basis() -> None:
